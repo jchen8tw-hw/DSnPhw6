@@ -4,7 +4,7 @@
   Synopsis     [ Define class CirAigGate member functions ]
   Author       [ Chung-Yang (Ric) Huang ]
   Copyright    [ Copyleft(c) 2008-present LaDs(III), GIEE, NTU, Taiwan ]
-****************************************************************************/
+****************************************************************************/
 
 #include <iostream>
 #include <iomanip>
