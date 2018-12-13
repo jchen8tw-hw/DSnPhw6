@@ -2,6 +2,8 @@
     "C_Cpp.clang_format_fallbackStyle": "{ BasedOnStyle: Google, IndentWidth: 4 }",
     "files.associations": {
         "iosfwd": "cpp",
-        "regex": "cpp"
+        "regex": "cpp",
+        "iostream": "cpp",
+        "vector": "cpp"
     }
 }

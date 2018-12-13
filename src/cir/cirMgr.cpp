@@ -166,13 +166,14 @@ bool CirMgr::ParseHeader(ifstream &aagf) {
     }
     ss tmp;
     for (size_t i = 0; i < 5; i++) {
-        tmp << tok[i].str();
+        tmp << tok[i + 1].str() << " ";
     }
     tmp >> Circuit.maxid;
     tmp >> Circuit.inputs;
     tmp >> Circuit.latches;
     tmp >> Circuit.outputs;
     tmp >> Circuit.ands;
+    Circuit.id2Gate = new CirGate *[Circuit.maxid + Circuit.outputs + 1]();
     return true;
 }
 bool CirMgr::GenGates(ifstream &aagf) {
@@ -180,39 +181,72 @@ bool CirMgr::GenGates(ifstream &aagf) {
     smatch tok;
     string gate;
     int lit = 0;
+    // Gen constant 0
+    Circuit.id2Gate[0] = new ConstGate;
+    // input
     for (size_t i = 0; i < Circuit.inputs; i++) {
         if (!getline(aagf, gate)) return false;
         if (!regex_match(gate, tok, gateformat)) return false;
-        myStr2Int(tok[0].str(), lit);
-        Circuit.InGates.push_back(lit);
-        CirGate *c = new InputGate;
-        Circuit.id2Gate.insert(pair<int, CirGate *>(lit / 2, c));
+        myStr2Int(tok[1], lit);
+        Circuit.id2Gate[lit / 2] = new InputGate;
+        Circuit.id2Gate[lit / 2]->setLineNo(i + 2);
     }
+    // outputs
     for (size_t i = 0; i < Circuit.outputs; i++) {
         if (!getline(aagf, gate)) return false;
-        if (!regex_match(gate, tok, gateformat)) return false;   
-        myStr2Int(tok[0].str(), lit);
-        Circuit.OutGates.push_back(lit);
-        CirGate *c = new OutputGate;
-        Circuit.id2Gate.insert(pair<int, CirGate *>(Circuit.maxid+i+1, c));
+        if (!regex_match(gate, tok, gateformat)) return false;
+        myStr2Int(tok[1], lit);
+        Circuit.id2Gate[Circuit.maxid + 1 + i] = new OutputGate(lit);
+        Circuit.id2Gate[Circuit.maxid + 1 + i]->setLineNo(i + 2 +
+                                                          Circuit.inputs);
     }
+    // AIG
     regex Andformat("([0-9])* ([0-9])* ([0-9])*");
-    while(getline(aagf,gate)){
-       if(gate == "c") break;
-       if(!regex_match(gate,tok,Andformat)) return false;
-       int lit1,lit2,lit3;
-       myStr2Int(tok[0].str(),lit1);
-       myStr2Int(tok[1].str(),lit2);
-       myStr2Int(tok[2].str(),lit3);
-
+    for (size_t i = 0; i < Circuit.ands; i++) {
+        // haven't add symbol parsing
+        // if (gate == "c") break;
+        if (!getline(aagf, gate)) return false;
+        if (!regex_match(gate, tok, Andformat)) return false;
+        int lit[3];
+        for (size_t j = 0; j < 3; j++) {
+            myStr2Int(tok[j + 1], lit[j]);
+        }
+        Circuit.id2Gate[lit[0] / 2] = new AndGate(lit[1], lit[2]);
+        Circuit.id2Gate[lit[0] / 2]->setLineNo(i + 2 + Circuit.outputs +
+                                               Circuit.inputs);
     }
+    return true;
+}
+bool CirMgr::ConstructCir() {
+    for (size_t i = 0; i < Circuit.maxid + Circuit.outputs + 1; i++) {
+        if (Circuit.id2Gate[i]->getType() == AIG_GATE) {
+            unsigned *f = Circuit.id2Gate[i]->getFanin();
+            // push literal in
+            if (Circuit.id2Gate[f[0] / 2] == 0)
+                Circuit.id2Gate[f[0] / 2] = new UndefGate;
+            Circuit.id2Gate[f[0] / 2]->_fanout.push_back(i * 2 + (f[0] % 2));
+            if (Circuit.id2Gate[f[1] / 2] == 0)
+                Circuit.id2Gate[f[1] / 2] = new UndefGate;
+            Circuit.id2Gate[f[1] / 2]->_fanout.push_back(i * 2 + (f[1] % 2));
+        }
+        if(Circuit.id2Gate[i]->getType() == PO_GATE){
+            unsigned *f = Circuit.id2Gate[i]->getFanin();
+            if(Circuit.id2Gate[*f/2] == 0)
+                Circuit.id2Gate[*f / 2] = new UndefGate;
+            Circuit.id2Gate[*f/2]->_fanout.push_back(i*2 + (*f % 2));
+        }
+    }
+    return true;
 }
 bool CirMgr::readCircuit(const string &fileName) {
     ifstream aagf(fileName);
     // finished read in the buf
     if (!ParseHeader(aagf)) return false;
     if (!GenGates(aagf)) return false;
+
     aagf.close();
+    if (!ConstructCir()) return false;
+
     return true;
 }
 
@@ -228,9 +262,51 @@ Circuit Statistics
 ------------------
   Total      162
 *********************/
-void CirMgr::printSummary() const {}
+void CirMgr::printSummary() const {
+    cout << "Circuit Statistics" << endl
+         << "==================" << endl
+         << setw(4) << "PI" << setw(12) << Circuit.inputs << endl
+         << setw(4) << "PO" << setw(12) << Circuit.outputs << endl
+         << setw(5) << "AIG" << setw(11) << Circuit.ands << endl
+         << "------------------" << endl
+         << setw(7) << "Total" << setw(9)
+         << Circuit.inputs + Circuit.outputs + Circuit.ands << endl;
+    return;
+}
+void CirMgr::DFSTravPO(unsigned id, int level = 0) const {
+    unsigned *c = Circuit.id2Gate[id]->getFanin();
+    if(c == NULL) return;
+    if(Circuit.id2Gate[id]->getType == PO_GATE){
 
-void CirMgr::printNetlist() const {}
+    }
+    else if(Circuit.id2Gate[id]->getType == PI_GATE){
+
+    }
+    else if (Circuit.id2Gate[id]->getType == AIG_GATE){
+
+    }
+    else if (Circuit.id2Gate[id]->getType == UNDEF_GATE){
+
+    }
+    else{
+        cerr << "Gate not defined" << endl;
+        return;
+    }
+    // if(Circuit.id2Gate[id]->isGlobalref()) return Circuit.id2Gate[id];
+    //DFSTravPO(c[0], level + 1)->reportGate();
+    //DFSTravPO(c[1], level + 1)->reportGate();
+    // do somthing here
+
+}
+
+void CirMgr::printNetlist() const {
+    CirGate::setGlobalref();
+    for (size_t i = Circuit.maxid + 1; i < Circuit.maxid + Circuit.outputs + 1;
+         i++) {
+        cout << "id: " << i << " global: " << Circuit.id2Gate[i]->_globalref << " local: " << Circuit.id2Gate[i]->_ref << endl;   
+    }
+    
+}
 
 void CirMgr::printPIs() const {
     cout << "PIs of the circuit:";

@@ -24,9 +24,13 @@ extern CirMgr *cirMgr;
 /**************************************/
 /*   class CirGate member functions   */
 /**************************************/
+unsigned CirGate::_globalref = 0;
+
 void
 CirGate::reportGate() const
 {
+   //cout << " " <<setiosflags(ios::left) << setw(4) << getTypeStr() << resetiosflags(ios::left) << endl;
+   setRefToGlobalRef();
 }
 
 void

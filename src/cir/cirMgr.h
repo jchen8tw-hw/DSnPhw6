@@ -12,8 +12,8 @@
 #include <fstream>
 #include <iostream>
 #include <string>
+#include <unordered_map>
 #include <vector>
-#include<unordered_map>
 
 using namespace std;
 
@@ -45,17 +45,21 @@ class CirMgr {
    private:
     class ParsedCir {
        public:
-        ParsedCir() : maxid(0),inputs(0), outputs(0), ands(0) {}
-        size_t inputs, outputs, ands,maxid,latches;
-        unordered_map<int,CirGate*> id2Gate;
-        vector<int> OutGates;
-        vector<int> InGates;
-        vector<int> AndGates;
+        ParsedCir() : maxid(0), inputs(0), outputs(0), ands(0), id2Gate(0) {}
+        ~ParsedCir() {
+            for (size_t i = 0; i < maxid + outputs; i++) {
+                if (id2Gate[i] != 0) delete id2Gate[i];
+            }
+            delete[] id2Gate;
+        }
+        size_t inputs, outputs, ands, maxid, latches;
+        CirGate **id2Gate;
     };
     ParsedCir Circuit;
-    bool ParseHeader(ifstream&);
-    bool GenGates(ifstream&);
-    bool ConstructCir(ifstream&);
+    void DFSTravPO(unsigned,int) const;
+    bool ParseHeader(ifstream &);
+    bool GenGates(ifstream &);
+    bool ConstructCir();
 };
 
 #endif  // CIR_MGR_H
