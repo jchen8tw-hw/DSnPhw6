@@ -56,7 +56,8 @@ class CirMgr {
         CirGate **id2Gate;
     };
     ParsedCir Circuit;
-    void DFSTravPO(unsigned,int) const;
+    void DFSTravPO(unsigned,unsigned&) const;
+    void printNetlistformat(unsigned,unsigned) const;
     bool ParseHeader(ifstream &);
     bool GenGates(ifstream &);
     bool ConstructCir();

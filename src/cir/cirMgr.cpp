@@ -152,7 +152,7 @@ static bool parseError(CirParseError err) {
 /**************************************************************/
 bool CirMgr::ParseHeader(ifstream &aagf) {
     smatch tok;
-    regex aagheader("aag ([0-9])* ([0-9])* ([0-9])* ([0-9])* ([0-9])*");
+    regex aagheader("aag ([0-9]+) ([0-9]+) ([0-9]+) ([0-9]+) ([0-9]+)");
     string header;
     if (!getline(aagf, header)) {
         // need to remove later
@@ -165,7 +165,8 @@ bool CirMgr::ParseHeader(ifstream &aagf) {
         return false;
     }
     ss tmp;
-    for (size_t i = 0; i < 5; i++) {
+    for (size_t i = 0; i < 5 ; i++) {
+        //cerr << tok[i].str() << endl;
         tmp << tok[i + 1].str() << " ";
     }
     tmp >> Circuit.maxid;
@@ -173,11 +174,12 @@ bool CirMgr::ParseHeader(ifstream &aagf) {
     tmp >> Circuit.latches;
     tmp >> Circuit.outputs;
     tmp >> Circuit.ands;
+    //one for const 0
     Circuit.id2Gate = new CirGate *[Circuit.maxid + Circuit.outputs + 1]();
     return true;
 }
 bool CirMgr::GenGates(ifstream &aagf) {
-    regex gateformat("([0-9])*");
+    regex gateformat("([0-9]+)");
     smatch tok;
     string gate;
     int lit = 0;
@@ -201,7 +203,7 @@ bool CirMgr::GenGates(ifstream &aagf) {
                                                           Circuit.inputs);
     }
     // AIG
-    regex Andformat("([0-9])* ([0-9])* ([0-9])*");
+    regex Andformat("([0-9]+) ([0-9]+) ([0-9]+)");
     for (size_t i = 0; i < Circuit.ands; i++) {
         // haven't add symbol parsing
         // if (gate == "c") break;
@@ -209,7 +211,7 @@ bool CirMgr::GenGates(ifstream &aagf) {
         if (!regex_match(gate, tok, Andformat)) return false;
         int lit[3];
         for (size_t j = 0; j < 3; j++) {
-            myStr2Int(tok[j + 1], lit[j]);
+            myStr2Int(tok[j + 1].str(), lit[j]);
         }
         Circuit.id2Gate[lit[0] / 2] = new AndGate(lit[1], lit[2]);
         Circuit.id2Gate[lit[0] / 2]->setLineNo(i + 2 + Circuit.outputs +
@@ -229,11 +231,11 @@ bool CirMgr::ConstructCir() {
                 Circuit.id2Gate[f[1] / 2] = new UndefGate;
             Circuit.id2Gate[f[1] / 2]->_fanout.push_back(i * 2 + (f[1] % 2));
         }
-        if(Circuit.id2Gate[i]->getType() == PO_GATE){
+        if (Circuit.id2Gate[i]->getType() == PO_GATE) {
             unsigned *f = Circuit.id2Gate[i]->getFanin();
-            if(Circuit.id2Gate[*f/2] == 0)
+            if (Circuit.id2Gate[*f / 2] == 0)
                 Circuit.id2Gate[*f / 2] = new UndefGate;
-            Circuit.id2Gate[*f/2]->_fanout.push_back(i*2 + (*f % 2));
+            Circuit.id2Gate[*f / 2]->_fanout.push_back(i * 2 + (*f % 2));
         }
     }
     return true;
@@ -273,39 +275,58 @@ void CirMgr::printSummary() const {
          << Circuit.inputs + Circuit.outputs + Circuit.ands << endl;
     return;
 }
-void CirMgr::DFSTravPO(unsigned id, int level = 0) const {
+void CirMgr::printNetlistformat(unsigned id,unsigned prid) const {
+    cout << "[" << prid << "] " << setiosflags(ios::left) << setw(4) 
+            << Circuit.id2Gate[id]->getTypeStr() << resetiosflags(ios::left);
+    return;
+}
+void CirMgr::DFSTravPO(unsigned id,unsigned& prid) const {
     unsigned *c = Circuit.id2Gate[id]->getFanin();
-    if(c == NULL) return;
-    if(Circuit.id2Gate[id]->getType == PO_GATE){
+    //todo: print symbol
+    if (Circuit.id2Gate[id]->getType() == PO_GATE) {
+        if (!Circuit.id2Gate[*c/2]->isGlobalref()) DFSTravPO(*c/2,prid);
+        printNetlistformat(id,prid);
+        cout << id << " " << ((*c % 2 == 1) ? "!" : "") << *c/2 << " " << endl;
+        
+    } else if (Circuit.id2Gate[id]->getType() == PI_GATE) {
+        printNetlistformat(id,prid);
+        cout << id << " " << endl;
+    } else if (Circuit.id2Gate[id]->getType() == AIG_GATE) {
+        if (!Circuit.id2Gate[c[0]/2]->isGlobalref()) {
+            DFSTravPO(c[0]/2,prid);
+        }
+        if (!Circuit.id2Gate[c[1]/2]->isGlobalref()) {
+            DFSTravPO(c[1]/2,prid);
+        }
+        printNetlistformat(id,prid);
+        cout << id << " " << ((c[0] % 2 == 1) ? "!" : "") << c[0]/2 << " " << ((c[1] % 2 == 1) ? "!" : "") << c[1]/2 << " " << endl;
 
-    }
-    else if(Circuit.id2Gate[id]->getType == PI_GATE){
-
-    }
-    else if (Circuit.id2Gate[id]->getType == AIG_GATE){
-
-    }
-    else if (Circuit.id2Gate[id]->getType == UNDEF_GATE){
-
-    }
-    else{
-        cerr << "Gate not defined" << endl;
+    } else if (Circuit.id2Gate[id]->getType() == UNDEF_GATE) {
+        Circuit.id2Gate[id]->setRefToGlobalRef();
         return;
+    }else if (Circuit.id2Gate[id]->getType() == CONST_GATE){
+        printNetlistformat(id,prid);
+        cout << endl;
+    } else {
+        //gate unknown type
+        printNetlistformat(id,prid);
+        cout << "0" << endl;
     }
-    // if(Circuit.id2Gate[id]->isGlobalref()) return Circuit.id2Gate[id];
-    //DFSTravPO(c[0], level + 1)->reportGate();
-    //DFSTravPO(c[1], level + 1)->reportGate();
-    // do somthing here
-
+    Circuit.id2Gate[id]->setRefToGlobalRef();
+    prid++;
+    return;
 }
 
 void CirMgr::printNetlist() const {
     CirGate::setGlobalref();
+    static unsigned printid = 0;
+    printid = 0;
+    //for( size_t i = 0;i<(Circuit.maxid + Circuit.outputs + 1);i++){
     for (size_t i = Circuit.maxid + 1; i < Circuit.maxid + Circuit.outputs + 1;
          i++) {
-        cout << "id: " << i << " global: " << Circuit.id2Gate[i]->_globalref << " local: " << Circuit.id2Gate[i]->_ref << endl;   
+        DFSTravPO(i,printid);
+    //    cout << "id: "  << i << " " << Circuit.id2Gate[i]->getTypeStr() << endl;
     }
-    
 }
 
 void CirMgr::printPIs() const {

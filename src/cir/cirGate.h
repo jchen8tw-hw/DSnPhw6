@@ -26,7 +26,7 @@ class CirGate;
 class CirGate {
    public:
    friend class CirMgr;
-    CirGate() : _ref(0), _lineNo(0),_fanin(0) {}
+    CirGate() : _ref(0), _lineNo(0),_fanin(0),_symbol(0) {}
     virtual ~CirGate() { delete [] _fanin;}
 
     // Basic access methods
@@ -36,7 +36,7 @@ class CirGate {
     unsigned getLineNo() const { return _lineNo; }
     void setLineNo(unsigned n) { _lineNo = n; }
     unsigned* getFanin() const {return _fanin;}
-    unsigned*& getFanin() {return _fanin;}
+    unsigned* getFanin() {return _fanin;}
     vector<unsigned>& getFanout() {return _fanout;}
     static void setGlobalref() {_globalref++;}
     bool isGlobalref() const {return (_globalref == _ref);}
@@ -55,6 +55,7 @@ class CirGate {
     vector<unsigned> _fanout;
     unsigned* _fanin;
     unsigned _lineNo;
+    char* _symbol;
     mutable unsigned _ref;
     static unsigned _globalref;
 };
