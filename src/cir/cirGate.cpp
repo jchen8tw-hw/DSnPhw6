@@ -30,7 +30,6 @@ void
 CirGate::reportGate() const
 {
    //cout << " " <<setiosflags(ios::left) << setw(4) << getTypeStr() << resetiosflags(ios::left) << endl;
-   setRefToGlobalRef();
 }
 
 void

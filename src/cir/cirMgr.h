@@ -45,14 +45,16 @@ class CirMgr {
    private:
     class ParsedCir {
        public:
-        ParsedCir() : maxid(0), inputs(0), outputs(0), ands(0), id2Gate(0) {}
+        ParsedCir() : maxid(0), inputs(0), outputs(0), ands(0), id2Gate(0),PI_list(0) {}
         ~ParsedCir() {
             for (size_t i = 0; i < maxid + outputs; i++) {
                 if (id2Gate[i] != 0) delete id2Gate[i];
             }
             delete[] id2Gate;
+            delete[] PI_list;
         }
         size_t inputs, outputs, ands, maxid, latches;
+        unsigned* PI_list;
         CirGate **id2Gate;
     };
     ParsedCir Circuit;
