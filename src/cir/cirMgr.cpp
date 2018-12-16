@@ -150,25 +150,44 @@ static bool parseError(CirParseError err) {
 /**************************************************************/
 /*   class CirMgr member functions for circuit construction   */
 /**************************************************************/
-void CirMgr::HeaderError(string& errstr){
+void CirMgr::HeaderError(string &errstr) {
     colNo = 0;
-    if(errstr.find_first_of(" ") == 0){
+    if (errstr[0] == ' ') {
         parseError(EXTRA_SPACE);
         return;
     }
-    if(errstr[0] == '\t'){
+    if (errstr[0] == '\t') {
         errInt = int('\t');
         parseError(ILLEGAL_WSPACE);
         return;
     }
-    regex identifier("aag");
-    if(!regex_match(errstr.begin(),errstr.begin()+errstr.find_first_of(" "),identifier)){
-        errMsg = errstr.substr(0,errstr.find_first_of(" "));
+    colNo +=3;
+    if(regex_match(errstr,regex("aag[0-9].*"))){
+        parseError(MISSING_SPACE);
+        return;
+    }
+    if(regex_match(errstr,regex("aag[^0-9 ].*"))){
+        errMsg = errstr.substr(0, errstr.find_first_of(" "));
         parseError(ILLEGAL_IDENTIFIER);
         return;
     }
-    colNo+=3;
+    colNo += 1;
+    if(errstr[colNo] == ' '){
+        parseError(EXTRA_SPACE);
+        return;
+    }
+    if(errstr[colNo] == '\t'){
+        errInt = int('\t');
+        parseError(ILLEGAL_WSPACE);
+    }
+    if(colNo+1 > errstr.size()){
+        errMsg = string("number of variables");
+        parseError(MISSING_NUM);
+        return;
+    }
+    while(errstr[colNo] <= '9' && errstr[colNo] >= '0') colNo++;
     
+
 }
 bool CirMgr::ParseHeader(ifstream &aagf) {
     smatch tok;
@@ -291,7 +310,7 @@ bool CirMgr::ConstructCir() {
 bool CirMgr::readCircuit(const string &fileName) {
     ifstream aagf(fileName);
     // finished read in the buf
-    if(!aagf){
+    if (!aagf) {
         cerr << "Cannot open design \"" << fileName << "\"!!" << endl;
         aagf.close();
         return false;
@@ -299,7 +318,6 @@ bool CirMgr::readCircuit(const string &fileName) {
     if (!ParseHeader(aagf)) return false;
     if (!GenGates(aagf)) return false;
 
-   
     if (!ConstructCir()) return false;
     aagf.close();
     return true;
@@ -341,7 +359,7 @@ void CirMgr::DFSTravPO(unsigned id, unsigned &prid) const {
         printNetlistformat(id, prid);
         SymbolGate *s = dynamic_cast<SymbolGate *>(Circuit.id2Gate[id]);
         cout << id << " "
-             << ((Circuit.id2Gate[*c/2]->getType() == UNDEF_GATE) ? "*" : "")
+             << ((Circuit.id2Gate[*c / 2]->getType() == UNDEF_GATE) ? "*" : "")
              << ((*c % 2 == 1) ? "!" : "") << *c / 2
              << ((s->getSymbol() == 0)
                      ? string("")
@@ -365,9 +383,11 @@ void CirMgr::DFSTravPO(unsigned id, unsigned &prid) const {
         }
         printNetlistformat(id, prid);
         cout << id << " "
-             << ((Circuit.id2Gate[c[0]/2]->getType() == UNDEF_GATE) ? "*" : "")
+             << ((Circuit.id2Gate[c[0] / 2]->getType() == UNDEF_GATE) ? "*"
+                                                                      : "")
              << ((c[0] % 2 == 1) ? "!" : "") << c[0] / 2 << " "
-             << ((Circuit.id2Gate[c[1]/2]->getType() == UNDEF_GATE) ? "*" : "")
+             << ((Circuit.id2Gate[c[1] / 2]->getType() == UNDEF_GATE) ? "*"
+                                                                      : "")
              << ((c[1] % 2 == 1) ? "!" : "") << c[1] / 2 << endl;
 
     } else if (Circuit.id2Gate[id]->getType() == UNDEF_GATE) {
@@ -426,19 +446,19 @@ void CirMgr::printFloatGates() const {
         if (Circuit.id2Gate[i] != 0) {
             unsigned *c = Circuit.id2Gate[i]->getFanin();
             if (Circuit.id2Gate[i]->getType() == PO_GATE &&
-                Circuit.id2Gate[*c/2]->getType() == UNDEF_GATE) {
+                Circuit.id2Gate[*c / 2]->getType() == UNDEF_GATE) {
                 outs << " " << i;
                 flag = true;
             } else if (Circuit.id2Gate[i]->getType() == AIG_GATE) {
-                if (Circuit.id2Gate[c[0]/2]->getType() == UNDEF_GATE ||
-                    Circuit.id2Gate[c[1]/2]->getType() == UNDEF_GATE) {
+                if (Circuit.id2Gate[c[0] / 2]->getType() == UNDEF_GATE ||
+                    Circuit.id2Gate[c[1] / 2]->getType() == UNDEF_GATE) {
                     outs << " " << i;
                     flag = true;
                 }
             }
         }
     }
-    if(flag) cout << outs.str() << endl;
+    if (flag) cout << outs.str() << endl;
     outs.str("");
     flag = false;
     outs << "Gates defined but not used  :";
@@ -450,51 +470,54 @@ void CirMgr::printFloatGates() const {
             }
         }
     }
-    if(flag) cout << outs.str() << endl;
+    if (flag) cout << outs.str() << endl;
     return;
 }
 void CirMgr::writeAag(ostream &outfile) const {
-    outfile << "aag " << Circuit.maxid << " " << Circuit.inputs << " " << Circuit.latches
-     << " "<< Circuit.outputs  << " " << Circuit.ands << endl;
-    for(size_t i = 0;i<Circuit.inputs;i++){
-        outfile << Circuit.PI_list[i]*2 << endl;
+    outfile << "aag " << Circuit.maxid << " " << Circuit.inputs << " "
+            << Circuit.latches << " " << Circuit.outputs << " " << Circuit.ands
+            << endl;
+    for (size_t i = 0; i < Circuit.inputs; i++) {
+        outfile << Circuit.PI_list[i] * 2 << endl;
     }
-    for(size_t i = Circuit.maxid + 1; i<Circuit.outputs+Circuit.maxid + 1;i++){
+    for (size_t i = Circuit.maxid + 1; i < Circuit.outputs + Circuit.maxid + 1;
+         i++) {
         outfile << *(Circuit.id2Gate[i]->getFanin()) << endl;
     }
     CirGate::setGlobalref();
     for (size_t i = Circuit.maxid + 1; i < Circuit.maxid + Circuit.outputs + 1;
          i++) {
-        Circuit.writeAig(i,outfile);
+        Circuit.writeAig(i, outfile);
     }
-    for(size_t i = 0;i< Circuit.inputs;i++){
-        SymbolGate* s = dynamic_cast<SymbolGate*>(Circuit.id2Gate[Circuit.PI_list[i]]);
-        if(s->getSymbol() != 0){
+    for (size_t i = 0; i < Circuit.inputs; i++) {
+        SymbolGate *s =
+            dynamic_cast<SymbolGate *>(Circuit.id2Gate[Circuit.PI_list[i]]);
+        if (s->getSymbol() != 0) {
             outfile << "i" << i << " " << s->getSymbol() << endl;
         }
     }
-    for(size_t i = Circuit.maxid+1;i<Circuit.maxid+Circuit.outputs+1;i++){
-        SymbolGate* s = dynamic_cast<SymbolGate*>(Circuit.id2Gate[i]);
-        if(s->getSymbol() != 0){
-            outfile << "o" << i-(Circuit.maxid+1) << " " << s->getSymbol() << endl;
+    for (size_t i = Circuit.maxid + 1; i < Circuit.maxid + Circuit.outputs + 1;
+         i++) {
+        SymbolGate *s = dynamic_cast<SymbolGate *>(Circuit.id2Gate[i]);
+        if (s->getSymbol() != 0) {
+            outfile << "o" << i - (Circuit.maxid + 1) << " " << s->getSymbol()
+                    << endl;
         }
     }
     outfile << "c" << endl << "AAG output by b06901048 Justin Chen" << endl;
-    
 }
-void CirMgr::ParsedCir::writeAig(int id,ostream &outfile) const{
-    unsigned* c = id2Gate[id]->getFanin();
-    if(id2Gate[id]->getType() == PO_GATE){
-         if (!id2Gate[*c / 2]->isGlobalref()) writeAig(*c/2,outfile);
-    }
-    else if(id2Gate[id]->getType() == AIG_GATE){
+void CirMgr::ParsedCir::writeAig(int id, ostream &outfile) const {
+    unsigned *c = id2Gate[id]->getFanin();
+    if (id2Gate[id]->getType() == PO_GATE) {
+        if (!id2Gate[*c / 2]->isGlobalref()) writeAig(*c / 2, outfile);
+    } else if (id2Gate[id]->getType() == AIG_GATE) {
         if (!id2Gate[c[0] / 2]->isGlobalref()) {
-            writeAig(c[0]/2,outfile);
+            writeAig(c[0] / 2, outfile);
         }
         if (!id2Gate[c[1] / 2]->isGlobalref()) {
-            writeAig(c[1]/2,outfile);
+            writeAig(c[1] / 2, outfile);
         }
-        outfile << id*2 << " " << c[0] << " " << c[1] << endl;
+        outfile << id * 2 << " " << c[0] << " " << c[1] << endl;
     }
     id2Gate[id]->setRefToGlobalRef();
     return;
