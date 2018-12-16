@@ -152,41 +152,108 @@ static bool parseError(CirParseError err) {
 /**************************************************************/
 void CirMgr::HeaderError(string &errstr) {
     colNo = 0;
+    //space
     if (errstr[0] == ' ') {
         parseError(EXTRA_SPACE);
         return;
     }
-    if (errstr[0] == '\t') {
-        errInt = int('\t');
+    //illegal space
+    if (isspace(errstr[0])) {
+        errInt = int(errstr[0]);
         parseError(ILLEGAL_WSPACE);
         return;
     }
-    colNo +=3;
-    if(regex_match(errstr,regex("aag[0-9].*"))){
+    string parsebuf = "";
+    while(!isspace(errstr[colNo]) && colNo < errstr.size()){
+        colNo++;
+        parsebuf += errstr[colNo];
+    }
+    //aag1
+    if(regex_match(parsebuf,regex("aag[0-9]+"))){
         parseError(MISSING_SPACE);
         return;
     }
-    if(regex_match(errstr,regex("aag[^0-9 ].*"))){
-        errMsg = errstr.substr(0, errstr.find_first_of(" "));
+    //aag!#$%^&
+    if(!regex_mate(parsebuf,regex("aag"))){
+        errMsg = parsebuf;
         parseError(ILLEGAL_IDENTIFIER);
         return;
     }
-    colNo += 1;
+    //aag\n
+    if(colNo == errstr.size()){
+        colNo++;
+        errMsg = "number of variables";
+        parseError(MISSING_NUM);
+        return;
+    }
+    parsebuf = "";
+    //aag\t
+    if(errstr[colNo] != ' ' && isspace(errstr[colNo])){
+        errInt = int(errstr[colNo]);
+        parseError(ILLEGAL_WSPACE);
+        return;
+    }
+    parsebuf += errstr[++colNo];
+    //aag[space]\n
+    if(colNo == errstr.size()){
+        errMsg = "number of variables";
+        parseError(MISSING_NUM);
+    }
+    //aag[space][space]
     if(errstr[colNo] == ' '){
         parseError(EXTRA_SPACE);
         return;
     }
-    if(errstr[colNo] == '\t'){
-        errInt = int('\t');
+    //aag[space]\t
+    if(isspace(errstr[colNo])){
+        errInt  = int(errstr[colNo]);
         parseError(ILLEGAL_WSPACE);
+        return;
     }
-    if(colNo+1 > errstr.size()){
-        errMsg = string("number of variables");
+    while(!isspace(errstr[colNo]) &&  colNo < errstr.size()) {
+        colNo++;
+        parsebuf += errstr[colNo];
+    }
+    //aag[space]!@#$%%
+    if(!regex_match(parsebuf,regex("[0-9]+"))){
+        errMsg = "number of variables(" + parsebuf + ")";
+        parseError(ILLEGAL_NUM);
+        return;
+    }
+    parsebuf = "";
+    //aag[space][num]\n
+    if(colNo == errstr.size()){
+        colNo++;
+        errMsg = "number of PIs";
         parseError(MISSING_NUM);
         return;
     }
-    while(errstr[colNo] <= '9' && errstr[colNo] >= '0') colNo++;
+    //aag[space][num]\t
+     if(errstr[colNo] != ' ' && isspace(errstr[colNo])){
+        errInt = int(errstr[colNo]);
+        parseError(ILLEGAL_WSPACE);
+        return;
+    }
+    parsebuf += errstr[++colNo];
+    //aag[space][num][space]\n
+    if(colNo == errstr.size()){
+        errMsg = "number of PIs";
+        parseError(MISSING_NUM);
+    }
+    //aag[space][num][space][space]
+    if(errstr[colNo] == ' '){
+        parseError(EXTRA_SPACE);
+        return;
+    }
+    //aag[space][num][space]\t
+    if(isspace(errstr[colNo])){
+        errInt  = int(errstr[colNo]);
+        parseError(ILLEGAL_WSPACE);
+        return;
+    }
+
     
+
 
 }
 bool CirMgr::ParseHeader(ifstream &aagf) {
