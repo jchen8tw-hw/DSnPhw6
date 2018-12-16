@@ -45,11 +45,14 @@ class CirGate {
 
     // Printing functions
     virtual void printGate() const = 0;
-    void reportGate() const;
-    void reportFanin(int level) const;
-    void reportFanout(int level) const;
+    //add gateId for report gate
+    void reportGate(int id) const;
+    void reportFanin(int level,int id) const;
+    void reportFanout(int level,int id) const;
 
    private:
+    void FaninDFS(int,unsigned,unsigned) const;
+    void FanoutDFS(int,unsigned,unsigned) const;
    protected:
     // using literal
     vector<unsigned> _fanout;
@@ -110,7 +113,7 @@ class ConstGate : public CirGate {
    public:
     ConstGate() : CirGate() {}
     void printGate() const { cout << getTypeStr(); }
-    string getTypeStr() const { return "CONST0"; }
+    string getTypeStr() const { return "CONST"; }
     GateType getType() const { return CONST_GATE; }
 
    private:

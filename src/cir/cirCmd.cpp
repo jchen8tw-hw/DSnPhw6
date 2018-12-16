@@ -221,11 +221,12 @@ CirGateCmd::exec(const string& option)
    }
 
    if (doFanin)
-      thisGate->reportFanin(level);
+      thisGate->reportFanin(level,gateId);
    else if (doFanout)
-      thisGate->reportFanout(level);
+      thisGate->reportFanout(level,gateId);
    else
-      thisGate->reportGate();
+      thisGate->reportGate(gateId);
+   // add gateId
 
    return CMD_EXEC_DONE;
 }

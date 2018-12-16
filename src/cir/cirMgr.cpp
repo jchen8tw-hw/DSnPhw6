@@ -347,7 +347,7 @@ void CirMgr::DFSTravPO(unsigned id, unsigned &prid) const {
         return;
     } else if (Circuit.id2Gate[id]->getType() == CONST_GATE) {
         printNetlistformat(id, prid);
-        cout << endl;
+        cout << id << endl;
     } else {
         // gate unknown type
         printNetlistformat(id, prid);
@@ -373,7 +373,7 @@ void CirMgr::printNetlist() const {
 
 void CirMgr::printPIs() const {
     cout << "PIs of the circuit:";
-    for (size_t i = 0; i < Circuit.inputs + 1; i++) {
+    for (size_t i = 0; i < Circuit.inputs; i++) {
         cout << " " << Circuit.PI_list[i];
     }
     cout << endl;
@@ -390,31 +390,39 @@ void CirMgr::printPOs() const {
 }
 
 void CirMgr::printFloatGates() const {
-    cout << "Gates with floating fanin(s):";
+    bool flag = false;
+    ss outs;
+    outs << "Gates with floating fanin(s):";
     for (size_t i = 0; i < Circuit.maxid + Circuit.outputs + 1; i++) {
         if (Circuit.id2Gate[i] != 0) {
             unsigned *c = Circuit.id2Gate[i]->getFanin();
             if (Circuit.id2Gate[i]->getType() == PO_GATE &&
-                Circuit.id2Gate[*c]->getType() == UNDEF_GATE) {
-                cout << " " << i;
+                Circuit.id2Gate[*c/2]->getType() == UNDEF_GATE) {
+                outs << " " << i;
+                flag = true;
             } else if (Circuit.id2Gate[i]->getType() == AIG_GATE) {
-                if (Circuit.id2Gate[c[0]]->getType() == UNDEF_GATE ||
-                    Circuit.id2Gate[c[1]]->getType() == UNDEF_GATE) {
-                    cout << " " << i;
+                if (Circuit.id2Gate[c[0]/2]->getType() == UNDEF_GATE ||
+                    Circuit.id2Gate[c[1]/2]->getType() == UNDEF_GATE) {
+                    outs << " " << i;
+                    flag = true;
                 }
             }
         }
     }
-    cout << endl;
-    cout << "Gates defined but not used  :";
-    for (size_t i = 0; i < Circuit.maxid + 1; i++) {
+    if(flag) cout << outs.str() << endl;
+    outs.str("");
+    flag = false;
+    outs << "Gates defined but not used  :";
+    for (size_t i = 1; i < Circuit.maxid + 1; i++) {
         if (Circuit.id2Gate[i] != 0) {
             if (Circuit.id2Gate[i]->getFanout().empty()) {
-                cout << " " << i;
+                outs << " " << i;
+                flag = true;
             }
         }
     }
-    cout << endl;
+    if(flag) cout << outs.str() << endl;
+    return;
 }
 
 void CirMgr::writeAag(ostream &outfile) const {}

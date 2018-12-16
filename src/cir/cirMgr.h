@@ -29,7 +29,7 @@ class CirMgr {
 
     // Access functions
     // return '0' if "gid" corresponds to an undefined gate.
-    CirGate *getGate(unsigned gid) const { return 0; }
+    CirGate *getGate(unsigned gid) const { return Circuit.id2Gate[gid]; }
 
     // Member functions about circuit construction
     bool readCircuit(const string &);
@@ -41,11 +41,15 @@ class CirMgr {
     void printPOs() const;
     void printFloatGates() const;
     void writeAag(ostream &) const;
-
-   private:
     class ParsedCir {
        public:
-        ParsedCir() : maxid(0), inputs(0), outputs(0), ands(0), id2Gate(0),PI_list(0) {}
+        ParsedCir()
+            : maxid(0),
+              inputs(0),
+              outputs(0),
+              ands(0),
+              id2Gate(0),
+              PI_list(0) {}
         ~ParsedCir() {
             for (size_t i = 0; i < maxid + outputs; i++) {
                 if (id2Gate[i] != 0) delete id2Gate[i];
@@ -54,12 +58,14 @@ class CirMgr {
             delete[] PI_list;
         }
         size_t inputs, outputs, ands, maxid, latches;
-        unsigned* PI_list;
+        unsigned *PI_list;
         CirGate **id2Gate;
     };
     ParsedCir Circuit;
-    void DFSTravPO(unsigned,unsigned&) const;
-    void printNetlistformat(unsigned,unsigned) const;
+
+   private:
+    void DFSTravPO(unsigned, unsigned &) const;
+    void printNetlistformat(unsigned, unsigned) const;
     bool ParseHeader(ifstream &);
     bool GenGates(ifstream &);
     bool ConstructCir();
