@@ -49,6 +49,7 @@ class CirMgr {
               outputs(0),
               ands(0),
               id2Gate(0),
+              latches(0),
               PI_list(0) {}
         ~ParsedCir() {
             for (size_t i = 0; i < maxid + outputs; i++) {
@@ -57,8 +58,11 @@ class CirMgr {
             delete[] id2Gate;
             delete[] PI_list;
         }
+        void writeAig(int id,ostream &) const;
         size_t inputs, outputs, ands, maxid, latches;
+        //stored with id
         unsigned *PI_list;
+        //index is id
         CirGate **id2Gate;
     };
     ParsedCir Circuit;
@@ -67,6 +71,7 @@ class CirMgr {
     void DFSTravPO(unsigned, unsigned &) const;
     void printNetlistformat(unsigned, unsigned) const;
     bool ParseHeader(ifstream &);
+    void HeaderError(string& errstr);
     bool GenGates(ifstream &);
     bool ConstructCir();
 };

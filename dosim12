@@ -1,0 +1,5 @@
+cirread tests.fraig/sim12.aag
+cirwrite
+usage
+q -f
+
