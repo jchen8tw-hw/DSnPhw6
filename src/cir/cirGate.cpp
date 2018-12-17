@@ -32,14 +32,14 @@ void CirGate::FaninDFS(int lit,unsigned maxlev,unsigned curlev = 0) const{
       cout << "  ";
    }
    cout << ((lit %2 == 0)? "" : "!")<< this->getTypeStr() << " " << lit/2;
-   if(this->isGlobalref() && !(this->getType() == PI_GATE || this->getType() == CONST_GATE || this->getType() == UNDEF_GATE)){
+   if(this->isGlobalref() && curlev != maxlev && !(this->getType() == PI_GATE || this->getType() == CONST_GATE || this->getType() == UNDEF_GATE)){
       cout << " (*)" << endl;
       return;
    }
    else{
       cout << endl;
    }
-   this->setRefToGlobalRef();
+   if(curlev != maxlev) this->setRefToGlobalRef();
    if(this->getType() == PO_GATE){
       cirMgr->Circuit.id2Gate[*c/2]->FaninDFS(*c,maxlev,curlev+1);
    }
@@ -60,14 +60,14 @@ void CirGate::FanoutDFS(int lit,unsigned maxlev,unsigned curlev = 0) const{
    }
    
    cout << ((lit %2 == 0)? "" : "!")<< this->getTypeStr() << " " << lit/2;
-   if(this->isGlobalref()&& !v.empty()){
+   if(this->isGlobalref()&& !v.empty() && curlev != maxlev){
          cout << " (*)" << endl;
          return;
    }
    else{
       cout << endl;
    }
-   this->setRefToGlobalRef();
+   if(curlev != maxlev)this->setRefToGlobalRef();
    if(v.empty()){
       return;
    }

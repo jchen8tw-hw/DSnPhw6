@@ -168,13 +168,13 @@ void CirMgr::HeaderError(string &errstr) {
         colNo++;
         parsebuf += errstr[colNo];
     }
-    //aag1
+    //aag[num]
     if(regex_match(parsebuf,regex("aag[0-9]+"))){
         parseError(MISSING_SPACE);
         return;
     }
     //aag!#$%^&
-    if(!regex_mate(parsebuf,regex("aag"))){
+    if(!regex_match(parsebuf,regex("aag"))){
         errMsg = parsebuf;
         parseError(ILLEGAL_IDENTIFIER);
         return;
