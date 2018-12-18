@@ -29,7 +29,9 @@ class CirMgr {
 
     // Access functions
     // return '0' if "gid" corresponds to an undefined gate.
-    CirGate *getGate(unsigned gid) const { return Circuit.id2Gate[gid]; }
+    CirGate *getGate(unsigned gid) const { 
+        return (gid <= Circuit.maxid+Circuit.outputs)? Circuit.id2Gate[gid] : 0 ;
+    }
 
     // Member functions about circuit construction
     bool readCircuit(const string &);
@@ -58,7 +60,7 @@ class CirMgr {
             delete[] id2Gate;
             delete[] PI_list;
         }
-        void writeAig(int id,ostream &) const;
+        void writeAig(int id,vector<unsigned>& AIGlist) const;
         size_t inputs, outputs, ands, maxid, latches;
         //stored with id
         unsigned *PI_list;

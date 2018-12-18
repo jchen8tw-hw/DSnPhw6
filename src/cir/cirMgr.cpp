@@ -403,7 +403,7 @@ Circuit Statistics
   Total      162
 *********************/
 void CirMgr::printSummary() const {
-    cout << "Circuit Statistics" << endl
+    cout << endl << "Circuit Statistics" << endl
          << "==================" << endl
          << setw(4) << "PI" << setw(12) << Circuit.inputs << endl
          << setw(4) << "PO" << setw(12) << Circuit.outputs << endl
@@ -542,8 +542,15 @@ void CirMgr::printFloatGates() const {
 }
 void CirMgr::writeAag(ostream &outfile) const {
     outfile << "aag " << Circuit.maxid << " " << Circuit.inputs << " "
-            << Circuit.latches << " " << Circuit.outputs << " " << Circuit.ands
-            << endl;
+            << Circuit.latches << " " << Circuit.outputs << " ";      
+    //outfile << trueaig << endl;
+    CirGate::setGlobalref();
+    vector<unsigned> AIGlist;
+    for (size_t i = Circuit.maxid + 1; i < Circuit.maxid + Circuit.outputs + 1;
+         i++) {
+        Circuit.writeAig(i,AIGlist);
+    }
+    outfile << AIGlist.size() / 3 << endl;
     for (size_t i = 0; i < Circuit.inputs; i++) {
         outfile << Circuit.PI_list[i] * 2 << endl;
     }
@@ -551,10 +558,9 @@ void CirMgr::writeAag(ostream &outfile) const {
          i++) {
         outfile << *(Circuit.id2Gate[i]->getFanin()) << endl;
     }
-    CirGate::setGlobalref();
-    for (size_t i = Circuit.maxid + 1; i < Circuit.maxid + Circuit.outputs + 1;
-         i++) {
-        Circuit.writeAig(i, outfile);
+    for (size_t i = 0; i < AIGlist.size();
+         i+=3) {
+        outfile << AIGlist[i] << " " << AIGlist[i+1] << " " << AIGlist[i+2] << endl; 
     }
     for (size_t i = 0; i < Circuit.inputs; i++) {
         SymbolGate *s =
@@ -573,18 +579,21 @@ void CirMgr::writeAag(ostream &outfile) const {
     }
     outfile << "c" << endl << "AAG output by b06901048 Justin Chen" << endl;
 }
-void CirMgr::ParsedCir::writeAig(int id, ostream &outfile) const {
+void CirMgr::ParsedCir::writeAig(int id,vector<unsigned>& AIGlist) const {
     unsigned *c = id2Gate[id]->getFanin();
     if (id2Gate[id]->getType() == PO_GATE) {
-        if (!id2Gate[*c / 2]->isGlobalref()) writeAig(*c / 2, outfile);
+        if (!id2Gate[*c / 2]->isGlobalref()) writeAig(*c / 2, AIGlist);
     } else if (id2Gate[id]->getType() == AIG_GATE) {
         if (!id2Gate[c[0] / 2]->isGlobalref()) {
-            writeAig(c[0] / 2, outfile);
+            writeAig(c[0] / 2,AIGlist);
         }
         if (!id2Gate[c[1] / 2]->isGlobalref()) {
-            writeAig(c[1] / 2, outfile);
+            writeAig(c[1] / 2,AIGlist);
         }
-        outfile << id * 2 << " " << c[0] << " " << c[1] << endl;
+        AIGlist.push_back(id*2);
+        AIGlist.push_back(c[0]);
+        AIGlist.push_back(c[1]);
+        //outfile << id * 2 << " " << c[0] << " " << c[1] << endl;
     }
     id2Gate[id]->setRefToGlobalRef();
     return;
